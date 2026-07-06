@@ -25,13 +25,15 @@ struct ChatsCommand: ParsableCommand {
         defer { reader.close() }
 
         let chats = try reader.chats(limit: limit)
+        let metadata = MetadataStore()
 
         if json {
             let items = chats.map { chat -> [String: Any] in
+                let displayName = metadata.name(for: chat.id) ?? chat.displayName
                 var dict: [String: Any] = [
                     "id": chat.id,
                     "type": chat.type.rawValue,
-                    "display_name": chat.displayName,
+                    "display_name": displayName,
                     "member_count": chat.memberCount,
                     "unread_count": chat.unreadCount,
                 ]
@@ -47,9 +49,10 @@ struct ChatsCommand: ParsableCommand {
                 return
             }
             for chat in chats {
+                let displayName = metadata.name(for: chat.id) ?? chat.displayName
                 let unread = chat.unreadCount > 0 ? " (\(chat.unreadCount) unread)" : ""
                 let time = chat.lastMessageAt.map { formatDate($0) } ?? ""
-                print("[\(chat.id)] \(chat.displayName)\(unread) \(time)")
+                print("[\(chat.id)] \(displayName)\(unread) \(time)")
             }
         }
     }

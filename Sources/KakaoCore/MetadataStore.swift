@@ -21,9 +21,10 @@ public final class MetadataStore {
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         filePath = dir.appendingPathComponent("metadata.json").path
 
-        if let data = FileManager.default.contents(atPath: filePath),
-           let decoded = try? JSONDecoder().decode([String: ChatInfo].self, from: data) {
-            chats = decoded
+        if let data = FileManager.default.contents(atPath: filePath) {
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            chats = (try? decoder.decode([String: ChatInfo].self, from: data)) ?? [:]
         } else {
             chats = [:]
         }

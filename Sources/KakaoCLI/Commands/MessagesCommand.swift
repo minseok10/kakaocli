@@ -33,17 +33,23 @@ struct MessagesCommand: ParsableCommand {
         let reader = try openDatabase(dbPath: db, key: key)
         defer { reader.close() }
 
-        // Resolve chat name to ID if needed
+        // Resolve chat name to ID if needed. Prefer UI names captured by `harvest`,
+        // falling back to DB-derived participant names.
         var resolvedChatId = chatId
         if let chatName = chat, resolvedChatId == nil {
-            let chats = try reader.chats(limit: 200)
-            if let found = chats.first(where: { $0.displayName.localizedCaseInsensitiveContains(chatName) }) {
+            let chats = try reader.chats(limit: 999999)
+            let metadata = MetadataStore()
+            if let found = chats.first(where: {
+                let displayName = metadata.name(for: $0.id) ?? $0.displayName
+                return displayName.localizedCaseInsensitiveContains(chatName)
+                    || $0.displayName.localizedCaseInsensitiveContains(chatName)
+            }) {
                 resolvedChatId = found.id
             } else {
                 print("Chat '\(chatName)' not found.")
                 print("Available chats:")
                 for c in chats.prefix(10) {
-                    print("  \(c.displayName)")
+                    print("  \(metadata.name(for: c.id) ?? c.displayName)")
                 }
                 throw ExitCode.failure
             }
