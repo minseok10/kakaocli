@@ -144,7 +144,7 @@ public final class DatabaseReader: @unchecked Sendable {
                 FROM NTUser
                 WHERE linkId = 0 AND userId IN (\(placeholders))
                 """
-            let binds: [SQLValue] = allIds.map { .int(Int($0)) }
+            let binds: [SQLValue] = allIds.map { .int64($0) }
             let pairs: [(Int64, String)] = try query(userSql, bind: binds) { r in
                 guard let n = r.string(1) else { return (r.int64(0), "") }
                 return (r.int64(0), n)

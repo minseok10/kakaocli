@@ -9,6 +9,27 @@ swift test
 
 No external dependencies besides `sqlcipher` (Homebrew). The `CSQLCipher` system library target wraps it via pkg-config.
 
+### `swift test` with Command Line Tools (no full Xcode)
+
+If `swift test` fails with `no such module 'Testing'`, the active toolchain is the
+standalone Command Line Tools, which ships swift-testing as a framework but doesn't add
+its search/rpath to the SwiftPM test build. The module is present — just point to it:
+
+```bash
+FW=/Library/Developer/CommandLineTools/Library/Developer/Frameworks
+LIB=/Library/Developer/CommandLineTools/Library/Developer/usr/lib
+swift test \
+  -Xswiftc -F -Xswiftc $FW \
+  -Xlinker -F -Xlinker $FW \
+  -Xlinker -rpath -Xlinker $FW \
+  -Xlinker -rpath -Xlinker $LIB
+```
+
+`-Xswiftc/-Xlinker -F` add the compile/link framework search path; the two `-rpath`
+entries let dyld find `Testing.framework` and `lib_TestingInterop.dylib` at runtime.
+Alternatively, install full Xcode and run `sudo xcode-select -s /Applications/Xcode.app`,
+after which plain `swift test` works.
+
 ## Project Structure
 
 - `Sources/KakaoCore/` - Core library: database decryption, models, UI automation
