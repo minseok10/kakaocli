@@ -89,7 +89,7 @@ public final class DatabaseReader: @unchecked Sendable {
             SELECT r.chatId, r.type, r.chatName, r.activeMembersCount,
                    r.lastLogId, r.lastUpdatedAt, r.countOfNewMessage,
                    u.displayName, u.friendNickName, u.nickName,
-                   ol.linkName, r.displayMemberIds
+                   ol.linkName, r.displayMemberIds, r.linkId
             FROM NTChatRoom r
             LEFT JOIN NTUser u ON r.directChatMemberUserId = u.userId AND u.linkId = 0
             LEFT JOIN NTOpenLink ol ON r.linkId = ol.linkId AND r.linkId != 0
@@ -99,7 +99,7 @@ public final class DatabaseReader: @unchecked Sendable {
 
         // First pass: collect raw fields and any pending member-id lookups.
         struct Raw {
-            let id: Int64; let type: Int; let chatName: String?; let direct: String?; let link: String?
+            let id: Int64; let type: Int; let isOpenLink: Bool; let chatName: String?; let direct: String?; let link: String?
             let memberIds: [Int64]; let memberCount: Int; let lastMsgId: Int64?; let lastMsgAt: Date?; let unread: Int
         }
         func nonEmpty(_ s: String?) -> String? { (s?.isEmpty ?? true) ? nil : s }
@@ -120,6 +120,7 @@ public final class DatabaseReader: @unchecked Sendable {
             return Raw(
                 id: row.int64(0),
                 type: row.int(1),
+                isOpenLink: row.int64(12) != 0,
                 chatName: nonEmpty(row.string(2)),
                 direct: nonEmpty(row.string(7)) ?? nonEmpty(row.string(8)) ?? nonEmpty(row.string(9)),
                 link: nonEmpty(row.string(10)),
@@ -170,7 +171,8 @@ public final class DatabaseReader: @unchecked Sendable {
             let name = selfLabel ?? r.chatName ?? r.direct ?? r.link ?? groupLabel ?? "(unknown)"
             return Chat(
                 id: r.id,
-                type: Chat.ChatType.from(rawInt: r.type),
+                type: Chat.ChatType.from(rawInt: r.type, isOpenLink: r.isOpenLink),
+                typeCode: r.type,
                 displayName: name,
                 memberCount: r.memberCount,
                 lastMessageId: r.lastMsgId,
@@ -541,13 +543,19 @@ public final class DatabaseReader: @unchecked Sendable {
 }
 
 extension Chat.ChatType {
-    /// Map KakaoTalk's integer chat type to our enum.
-    static func from(rawInt: Int) -> Self {
-        // KakaoTalk uses integer types; exact mapping TBD via testing
+    /// Map `NTChatRoom.type` to our enum. Codes were identified from a real database:
+    /// 2 is chats with KakaoTalk Channels (mostly AlimTalk), 4 is open group chats
+    /// (rows with an `NTOpenLink`), 9999 is an internal open-profile placeholder.
+    /// Other codes that carry an open link are treated as open chats.
+    static func from(rawInt: Int, isOpenLink: Bool = false) -> Self {
         switch rawInt {
         case 0: return .direct
         case 1: return .group
-        default: return .unknown
+        case 2: return .channel
+        case 4: return .openChat
+        case 5: return .selfChat
+        case 9999: return .system
+        default: return isOpenLink ? .openChat : .unknown
         }
     }
 }

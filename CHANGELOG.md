@@ -7,6 +7,7 @@
 - `send`: refuse when the input box has a draft, post keys to the KakaoTalk PID only, confirm the message in the DB (exit 2 if unconfirmed)
 - Message types: correct names for all KakaoTalk codes, raw `type_code`, `deleted` flag
 - `query`: NULL → `null`, BLOB → base64
+- `chats`: map every observed `NTChatRoom.type` (channel, open, self, system were `unknown`) and add `type_code`
 - `history` command: cursor-paginated reads with attachments and filters (upstream PR #28)
 
 ### v0.5.0 - Chat Harvest (Phase 4)

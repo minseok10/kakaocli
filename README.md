@@ -30,6 +30,7 @@
 | `auth` / all commands | Caches the recovered userId in `~/.kakaocli/userid` (about 4s → 0.2s per command), revalidated against the active account | like [#6](https://github.com/silver-flight-group/kakaocli/pull/6)/[#20](https://github.com/silver-flight-group/kakaocli/pull/20) |
 | `send` | Refuses ambiguous chat names and drafts, checks the opened window's title, sends keys to the KakaoTalk PID only, and confirms the message in the DB | like [#25](https://github.com/silver-flight-group/kakaocli/pull/25)/[#31](https://github.com/silver-flight-group/kakaocli/pull/31) |
 | `messages` / `search` / `sync` | Correct message type names (reply, file, emoticon, …) plus the raw `type_code`; deleted messages are flagged | — |
+| `chats` | Chat types for every code in the DB: `direct`, `group`, `channel` (business accounts), `open`, `self`, `system`, plus `type_code` | — |
 | `query` | NULL → `null`, BLOB → base64 (both used to be `""`) | like [#31](https://github.com/silver-flight-group/kakaocli/pull/31) |
 | `history` | New: cursor-paginated message reads with attachments and filters | [#28](https://github.com/silver-flight-group/kakaocli/pull/28) |
 | Chat names | Chat-list rows matched by name label; open/group/self-chat names resolved from the DB | [#11](https://github.com/silver-flight-group/kakaocli/pull/11), [#19](https://github.com/silver-flight-group/kakaocli/pull/19) |
@@ -40,6 +41,7 @@
 | `auth` / 전체 | 찾아낸 userId를 `~/.kakaocli/userid`에 캐시 (명령당 약 4초 → 0.2초). 계정이 바뀌면 자동으로 다시 찾음 |
 | `send` | 애매한 이름·쓰다 만 글이 있으면 거부, 창 제목 확인, 키 입력은 카카오톡에만 전달, 전송 후 DB에서 확인 |
 | `messages` / `search` / `sync` | 메시지 종류(답장, 파일, 이모티콘 등)를 올바르게 표시하고 원래 코드(`type_code`)도 함께 출력. 삭제된 메시지 표시 |
+| `chats` | 채팅방 종류를 모두 구분: 1:1(`direct`), 그룹(`group`), 카카오톡 채널(`channel`), 오픈채팅(`open`), 나와의 채팅(`self`), 시스템(`system`) |
 | `query` | NULL은 `null`, BLOB은 base64로 출력 (이전에는 둘 다 `""`) |
 | `history` | 새 명령: 커서 기반 페이지 넘기기, 첨부파일 정보, 검색·필터 |
 

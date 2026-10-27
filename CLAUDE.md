@@ -25,6 +25,9 @@ swift test \
   -Xlinker -rpath -Xlinker $LIB
 ```
 
+If it then fails with `plugin for module 'TestingMacros' not found`, also pass
+`-Xswiftc -plugin-path -Xswiftc /Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing`.
+
 `-Xswiftc/-Xlinker -F` add the compile/link framework search path; the two `-rpath`
 entries let dyld find `Testing.framework` and `lib_TestingInterop.dylib` at runtime.
 Alternatively, install full Xcode and run `sudo xcode-select -s /Applications/Xcode.app`,
@@ -85,6 +88,7 @@ after which plain `swift test` works.
 - **Group chats**: Parse `NTChatRoom.displayMemberIds` — a binary plist (`bplist00`) containing `NSArray<NSNumber>` of userIds. Resolve each from NTUser.
 - **Open channels/groups**: `NTOpenLink.linkName` via `linkId` JOIN
 - **Self-chat** (type 5): Only 1 member, label as "Self-chat (Notes)"
+- **`NTChatRoom.type`**: 0 direct, 1 group, 2 KakaoTalk Channel (business/AlimTalk), 4 open chat (has `NTOpenLink`), 5 self-chat, 9999 internal open-profile placeholder
 - **`NTChatRoom.chatName`**: Usually empty — only set for custom-named group chats
 - **`kakaocli chats --limit N`**: Default limit is 50. Use `--limit 999999` to get all chats.
 - **Local DB message cache**: Only chats opened on this Mac are synced locally; coverage varies widely per chat (a long-used install can hold hundreds of thousands of messages). Full history lives on KakaoTalk's servers.

@@ -33,6 +33,7 @@ struct ChatsCommand: ParsableCommand {
                 var dict: [String: Any] = [
                     "id": chat.id,
                     "type": chat.type.rawValue,
+                    "type_code": chat.typeCode,
                     "display_name": displayName,
                     "member_count": chat.memberCount,
                     "unread_count": chat.unreadCount,

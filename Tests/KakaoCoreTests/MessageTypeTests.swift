@@ -23,3 +23,14 @@ import Testing
     #expect(MessageCursor(string: "1790400000") == nil)
     #expect(MessageCursor(string: "a.b") == nil)
 }
+
+@Test func testChatTypeCodes() {
+    #expect(Chat.ChatType.from(rawInt: 0) == .direct)
+    #expect(Chat.ChatType.from(rawInt: 1) == .group)
+    #expect(Chat.ChatType.from(rawInt: 2) == .channel)
+    #expect(Chat.ChatType.from(rawInt: 4) == .openChat)
+    #expect(Chat.ChatType.from(rawInt: 5) == .selfChat)
+    #expect(Chat.ChatType.from(rawInt: 9999) == .system)
+    #expect(Chat.ChatType.from(rawInt: 3, isOpenLink: true) == .openChat)
+    #expect(Chat.ChatType.from(rawInt: 3) == .unknown)
+}

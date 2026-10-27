@@ -47,7 +47,19 @@ kakaocli chats --json --limit 999999
 [{"id": 142943519989217, "display_name": "지수", "type": "direct", "member_count": 2, "unread_count": 0, "last_message_at": "2026-10-27T03:14:58Z"}]
 ```
 
-`--limit` defaults to 50; pass a large value to get every chat. `type` is `direct`, `group`, `open` or `unknown`.
+`--limit` defaults to 50; pass a large value to get every chat.
+
+| `type` | `type_code` | Chat |
+|--------|-------------|------|
+| `direct` | 0 | 1:1 with a person |
+| `group` | 1 | Group chat |
+| `channel` | 2 | KakaoTalk Channel (businesses and services, mostly AlimTalk notifications) |
+| `open` | 4 | Open chat |
+| `self` | 5 | Self-chat (나와의 채팅) |
+| `system` | 9999 | Internal placeholder; ignore |
+| `unknown` | other | Unrecognized code; check `type_code` |
+
+Skip `channel` chats when looking for messages from people.
 
 ### Latest messages
 
