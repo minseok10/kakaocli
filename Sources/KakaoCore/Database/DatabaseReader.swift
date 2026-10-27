@@ -217,7 +217,7 @@ public final class DatabaseReader: @unchecked Sendable {
                 senderId: row.int64(2),
                 senderName: row.string(3),
                 text: row.string(4),
-                type: Message.MessageType(rawValue: row.int(5)),
+                typeCode: row.int(5),
                 createdAt: row.kakaoDate(6),
                 isFromMe: row.int64(2) == myUserId
             )
@@ -244,7 +244,7 @@ public final class DatabaseReader: @unchecked Sendable {
                 senderId: row.int64(2),
                 senderName: row.string(3),
                 text: row.string(4),
-                type: Message.MessageType(rawValue: row.int(5)),
+                typeCode: row.int(5),
                 createdAt: row.kakaoDate(6),
                 isFromMe: row.int64(2) == myUserId
             )
@@ -311,6 +311,7 @@ public final class DatabaseReader: @unchecked Sendable {
     }
 
     /// Run an arbitrary read-only SQL query and return results as arrays of Any.
+    /// NULL becomes `NSNull` and BLOB becomes a base64 string, so both survive JSON serialization.
     public func rawQuery(_ sql: String) throws -> [[Any]] {
         var stmt: OpaquePointer?
         guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
@@ -331,10 +332,15 @@ public final class DatabaseReader: @unchecked Sendable {
                     row.append(sqlite3_column_double(stmt, i))
                 case SQLITE_TEXT:
                     row.append(String(cString: sqlite3_column_text(stmt, i)))
-                case SQLITE_NULL:
-                    row.append("")
+                case SQLITE_BLOB:
+                    let count = Int(sqlite3_column_bytes(stmt, i))
+                    if count > 0, let bytes = sqlite3_column_blob(stmt, i) {
+                        row.append(Data(bytes: bytes, count: count).base64EncodedString())
+                    } else {
+                        row.append("")
+                    }
                 default:
-                    row.append("")
+                    row.append(NSNull())
                 }
             }
             results.append(row)

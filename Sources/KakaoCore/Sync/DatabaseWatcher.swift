@@ -82,8 +82,26 @@ public struct SyncMessage: Sendable, Encodable {
     public let senderName: String?
     public let text: String?
     public let messageType: Int
+    public let messageTypeName: String
+    public let isDeleted: Bool
     public let timestamp: String
     public let isFromMe: Bool
+
+    public init(type: String, logId: Int64, chatId: Int64, chatName: String?, senderId: Int64,
+                senderName: String?, text: String?, messageType: Int, timestamp: String, isFromMe: Bool) {
+        self.type = type
+        self.logId = logId
+        self.chatId = chatId
+        self.chatName = chatName
+        self.senderId = senderId
+        self.senderName = senderName
+        self.text = text
+        self.messageType = messageType
+        self.messageTypeName = Message.MessageType(code: messageType).rawValue
+        self.isDeleted = Message.MessageType.isDeleted(code: messageType)
+        self.timestamp = timestamp
+        self.isFromMe = isFromMe
+    }
 
     enum CodingKeys: String, CodingKey {
         case type
@@ -94,6 +112,8 @@ public struct SyncMessage: Sendable, Encodable {
         case senderName = "sender"
         case text
         case messageType = "message_type"
+        case messageTypeName = "message_type_name"
+        case isDeleted = "deleted"
         case timestamp
         case isFromMe = "is_from_me"
     }

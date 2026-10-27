@@ -35,12 +35,14 @@ struct SearchCommand: ParsableCommand {
                     "id": msg.id,
                     "chat_id": msg.chatId,
                     "sender_id": msg.senderId,
-                    "type": String(describing: msg.type),
+                    "type": msg.type.rawValue,
+                    "type_code": msg.typeCode,
                     "timestamp": ISO8601DateFormatter().string(from: msg.createdAt),
                     "is_from_me": msg.isFromMe,
                 ]
                 if let name = msg.senderName { dict["sender"] = name }
                 if let text = msg.text { dict["text"] = text }
+                if msg.isDeleted { dict["deleted"] = true }
                 return dict
             }
             JSONOutput.printArray(items)
