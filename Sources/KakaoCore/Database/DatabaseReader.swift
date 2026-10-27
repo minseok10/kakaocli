@@ -342,7 +342,7 @@ public final class DatabaseReader: @unchecked Sendable {
     /// KakaoTalk stores an outgoing message with `logId = Int64.max` until the server
     /// acks it. A sync cursor seeded from that placeholder makes every later
     /// `logId > ?` query empty, so readers that track a cursor must skip it.
-    static let pendingLogId = Int64.max
+    public static let pendingLogId = Int64.max
 
     /// Get the maximum logId in the messages table (used by DatabaseWatcher).
     public func maxLogId() throws -> Int64 {
@@ -353,6 +353,18 @@ public final class DatabaseReader: @unchecked Sendable {
             row.optionalInt64(0)
         }
         return results.first.flatMap { $0 } ?? 0
+    }
+
+    /// Messages by `authorId` with exactly this text and logId above `afterLogId`, used to
+    /// confirm that a send reached the database. Includes rows still pending a server ack
+    /// (`logId = Int64.max`), so callers can tell "sent, awaiting ack" from "not sent".
+    public func outgoingMessages(text: String, authorId: Int64, afterLogId: Int64) throws -> [(logId: Int64, chatId: Int64)] {
+        try query(
+            "SELECT logId, chatId FROM NTChatMessage WHERE authorId = ? AND message = ? AND logId > ? ORDER BY logId",
+            bind: [.int64(authorId), .string(text), .int64(afterLogId)]
+        ) { row in
+            (row.int64(0), row.int64(1))
+        }
     }
 
     /// Get messages with logId strictly greater than the given value.

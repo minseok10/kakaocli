@@ -13,6 +13,14 @@ public enum AXHelpers {
     }
 
     /// Activate (bring to front) an app by bundle identifier.
+    /// PID of the running app with this bundle id.
+    public static func pid(bundleId: String) throws -> pid_t {
+        guard let app = NSRunningApplication.runningApplications(withBundleIdentifier: bundleId).first else {
+            throw KakaoError.kakaoTalkNotInstalled
+        }
+        return app.processIdentifier
+    }
+
     public static func activateApp(bundleId: String) throws {
         guard let app = NSRunningApplication.runningApplications(withBundleIdentifier: bundleId).first else {
             throw KakaoError.kakaoTalkNotInstalled
@@ -401,26 +409,37 @@ public enum AXHelpers {
     // MARK: - Keyboard Helpers
 
     /// Type text using CGEvent (handles Unicode correctly).
-    public static func typeText(_ text: String) {
+    /// Type text as key events. With `pid`, events go only to that process instead of
+    /// whichever app is frontmost, so a focus change mid-send cannot redirect them.
+    public static func typeText(_ text: String, pid: pid_t? = nil) {
         for char in text {
             let utf16 = Array(char.utf16)
             if let down = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: true),
                let up = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: false) {
                 down.keyboardSetUnicodeString(stringLength: utf16.count, unicodeString: utf16)
                 up.keyboardSetUnicodeString(stringLength: utf16.count, unicodeString: utf16)
-                down.post(tap: .cghidEventTap)
-                up.post(tap: .cghidEventTap)
+                post(down, up, pid: pid)
                 usleep(5000) // 5ms between keystrokes
             }
         }
     }
 
     /// Press a key using CGEvent.
-    public static func pressKey(keyCode: CGKeyCode, flags: CGEventFlags = []) {
+    /// Press a key. With `pid`, the events go only to that process (see `typeText`).
+    public static func pressKey(keyCode: CGKeyCode, flags: CGEventFlags = [], pid: pid_t? = nil) {
         if let down = CGEvent(keyboardEventSource: nil, virtualKey: keyCode, keyDown: true),
            let up = CGEvent(keyboardEventSource: nil, virtualKey: keyCode, keyDown: false) {
             down.flags = flags
             up.flags = flags
+            post(down, up, pid: pid)
+        }
+    }
+
+    private static func post(_ down: CGEvent, _ up: CGEvent, pid: pid_t?) {
+        if let pid {
+            down.postToPid(pid)
+            up.postToPid(pid)
+        } else {
             down.post(tap: .cghidEventTap)
             up.post(tap: .cghidEventTap)
         }

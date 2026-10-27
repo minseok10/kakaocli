@@ -28,7 +28,7 @@
 |------|--------|----------|
 | `sync` | Skips KakaoTalk's pending `logId = Int64.max` rows, which used to freeze the sync cursor so no new messages were ever emitted again | [#17](https://github.com/silver-flight-group/kakaocli/pull/17) |
 | `auth` / all commands | Caches the recovered userId in `~/.kakaocli/userid` (about 4s → 0.2s per command), revalidated against the active account | like [#6](https://github.com/silver-flight-group/kakaocli/pull/6)/[#20](https://github.com/silver-flight-group/kakaocli/pull/20) |
-| `send` | Refuses ambiguous chat names and checks the opened window's title before typing | like [#25](https://github.com/silver-flight-group/kakaocli/pull/25)/[#31](https://github.com/silver-flight-group/kakaocli/pull/31) |
+| `send` | Refuses ambiguous chat names and drafts, checks the opened window's title, sends keys to the KakaoTalk PID only, and confirms the message in the DB | like [#25](https://github.com/silver-flight-group/kakaocli/pull/25)/[#31](https://github.com/silver-flight-group/kakaocli/pull/31) |
 | `messages` / `search` / `sync` | Correct message type names (reply, file, emoticon, …) plus the raw `type_code`; deleted messages are flagged | — |
 | `query` | NULL → `null`, BLOB → base64 (both used to be `""`) | like [#31](https://github.com/silver-flight-group/kakaocli/pull/31) |
 | `history` | New: cursor-paginated message reads with attachments and filters | [#28](https://github.com/silver-flight-group/kakaocli/pull/28) |
@@ -38,7 +38,7 @@
 |------|------|
 | `sync` | 서버 응답 대기 중인 메시지(`logId = Int64.max`) 때문에 sync가 조용히 멈추던 문제 수정 |
 | `auth` / 전체 | 찾아낸 userId를 `~/.kakaocli/userid`에 캐시 (명령당 약 4초 → 0.2초). 계정이 바뀌면 자동으로 다시 찾음 |
-| `send` | 이름이 여러 채팅방에 걸리면 전송을 거부하고, 입력 전에 열린 창 제목이 맞는지 확인 |
+| `send` | 애매한 이름·쓰다 만 글이 있으면 거부, 창 제목 확인, 키 입력은 카카오톡에만 전달, 전송 후 DB에서 확인 |
 | `messages` / `search` / `sync` | 메시지 종류(답장, 파일, 이모티콘 등)를 올바르게 표시하고 원래 코드(`type_code`)도 함께 출력. 삭제된 메시지 표시 |
 | `query` | NULL은 `null`, BLOB은 base64로 출력 (이전에는 둘 다 `""`) |
 | `history` | 새 명령: 커서 기반 페이지 넘기기, 첨부파일 정보, 검색·필터 |
@@ -242,8 +242,13 @@ How the chat is chosen, so a message never goes to the wrong chat:
 1. A chat whose name is **exactly** the argument wins.
 2. Otherwise a substring is accepted only if it matches **one** chat. If several match (e.g. `민수` matches `민수 가족방` and `민수 친구들`), `send` fails and lists them, so retry with the exact name.
 3. After the chat window opens, its title must equal the matched chat's name, or the window is closed and nothing is sent.
+4. If the input box already holds a draft, `send` refuses rather than sending or appending to it.
+5. Return is pressed only after the input box reads back exactly your message, and key events go to the KakaoTalk process only, so another app taking focus mid-send cannot receive them.
+6. `send` then waits (up to `--confirm-timeout`, default 10s) for your message to appear in the local database.
 
-전송 대상은 이렇게 고릅니다: 이름이 정확히 같은 방이 우선이고, 부분 일치는 한 방에만 걸릴 때만 허용합니다. 여러 방에 걸리면 후보 목록과 함께 실패합니다. 창이 열린 뒤 제목이 다르면 아무것도 보내지 않고 창을 닫습니다.
+Exit status: `0` = confirmed in the database. `2` = Return was pressed but the message was not seen in time; check KakaoTalk before retrying, or it may be sent twice. Any other failure happens before Return, so nothing was sent.
+
+전송 대상은 이렇게 고릅니다: 이름이 정확히 같은 방이 우선이고, 부분 일치는 한 방에만 걸릴 때만 허용합니다. 여러 방에 걸리면 후보 목록과 함께 실패합니다. 창이 열린 뒤 제목이 다르거나 입력창에 쓰다 만 글이 있으면 아무것도 보내지 않습니다. 키 입력은 카카오톡 프로세스에만 전달되고, 전송 후에는 로컬 DB에 메시지가 실제로 생겼는지 확인합니다. 종료 코드 `2`는 "Return은 눌렀지만 DB에서 확인되지 않음"이니 다시 보내기 전에 카카오톡을 확인하세요.
 
 ### Sync / 동기화
 

@@ -26,6 +26,8 @@ public final class KakaoAutomator {
         // 2. Activate KakaoTalk and get windows
         try AXHelpers.activateApp(bundleId: Self.bundleId)
         let app = try AXHelpers.appElement(bundleId: Self.bundleId)
+        // Key events go to this PID only, never to whatever app happens to be frontmost.
+        let pid = try AXHelpers.pid(bundleId: Self.bundleId)
 
         let windows = AXHelpers.windows(app)
         dlog("step2 windows.count=\(windows.count)")
@@ -96,7 +98,7 @@ public final class KakaoAutomator {
         var opened = false
         if AXHelpers.selectRow(row, in: table) {
             Thread.sleep(forTimeInterval: 0.2)
-            AXHelpers.pressKey(keyCode: 36) // Enter to open
+            AXHelpers.pressKey(keyCode: 36, pid: pid) // Enter to open
             Thread.sleep(forTimeInterval: 0.5)
             let checkWindows = AXHelpers.windows(app)
             opened = checkWindows.contains { AXHelpers.identifier($0) != "Main Window" }
@@ -160,26 +162,49 @@ public final class KakaoAutomator {
         }
         dlog("step8 inputField found role=\(AXHelpers.role(inputField) ?? "?") desc=\(AXHelpers.description(inputField) ?? "")")
 
+        // 8b. Refuse to touch a composer that already holds a draft: Return would send
+        //     the draft too, or our text would be appended to it.
+        let draft = AXHelpers.value(inputField) ?? ""
+        guard draft.isEmpty else {
+            dlog("step8b FAIL: composer has a \(draft.count)-char draft")
+            _ = AXHelpers.closeWindow(chatWindow)
+            throw AutomationError.draftInComposer(expectedTitle ?? chatName)
+        }
+
         // 9. Focus and type the message
         _ = AXHelpers.performAction(chatWindow, kAXRaiseAction as String)
         Thread.sleep(forTimeInterval: 0.3)
         AXHelpers.clickElement(inputField)
         Thread.sleep(forTimeInterval: 0.3)
 
-        if AXHelpers.setValue(inputField, message) {
-            Thread.sleep(forTimeInterval: 0.2)
-            AXHelpers.pressKey(keyCode: 36) // Return key
-        } else {
+        if !AXHelpers.setValue(inputField, message) {
             _ = AXHelpers.focus(inputField)
             Thread.sleep(forTimeInterval: 0.1)
-            AXHelpers.typeText(message)
-            Thread.sleep(forTimeInterval: 0.2)
-            AXHelpers.pressKey(keyCode: 36) // Return key
+            AXHelpers.typeText(message, pid: pid)
         }
+
+        // 9b. Press Return only once the composer holds exactly our message.
+        guard waitForValue(inputField, equalTo: message) else {
+            dlog("step9b FAIL: composer does not hold the message; Return not pressed")
+            _ = AXHelpers.setValue(inputField, "")
+            _ = AXHelpers.closeWindow(chatWindow)
+            throw AutomationError.composerMismatch
+        }
+        AXHelpers.pressKey(keyCode: 36, pid: pid) // Return key
+        dlog("step9 Return sent to pid \(pid)")
 
         // 10. Close the chat window
         Thread.sleep(forTimeInterval: 0.3)
         _ = AXHelpers.closeWindow(chatWindow)
+    }
+
+    private func waitForValue(_ element: AXUIElement, equalTo expected: String, timeout: TimeInterval = 1.0) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        repeat {
+            if AXHelpers.value(element) == expected { return true }
+            Thread.sleep(forTimeInterval: 0.1)
+        } while Date() < deadline
+        return false
     }
 
     /// Find the message input AXTextArea in a chat window.
@@ -208,6 +233,8 @@ public enum AutomationError: Error, CustomStringConvertible {
     case chatNotFound(String)
     case ambiguousChat(String, candidates: [String])
     case wrongChatOpened(expected: String, opened: String?)
+    case draftInComposer(String)
+    case composerMismatch
     case inputFieldNotFound
     case sendFailed(String)
 
@@ -222,6 +249,10 @@ public enum AutomationError: Error, CustomStringConvertible {
             return "Chat name '\(name)' matches \(candidates.count) chats. Use the exact name:\n\(list)"
         case .wrongChatOpened(let expected, let opened):
             return "Opened '\(opened ?? "(untitled)")' instead of '\(expected)'. Nothing was sent."
+        case .draftInComposer(let name):
+            return "The input box in '\(name)' already has a draft. Clear it in KakaoTalk first. Nothing was sent."
+        case .composerMismatch:
+            return "Could not confirm the message text in the input box, so Return was not pressed. Nothing was sent."
         case .inputFieldNotFound:
             return """
             Could not find the message input field.

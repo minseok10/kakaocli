@@ -4,6 +4,7 @@
 - `sync`: skip pending `logId = Int64.max` rows so the cursor cannot freeze (upstream PR #17)
 - userId cached in `~/.kakaocli/userid`, revalidated against the active account
 - `send`: refuse ambiguous chat names; verify the opened window title before typing
+- `send`: refuse when the input box has a draft, post keys to the KakaoTalk PID only, confirm the message in the DB (exit 2 if unconfirmed)
 - Message types: correct names for all KakaoTalk codes, raw `type_code`, `deleted` flag
 - `query`: NULL → `null`, BLOB → base64
 - `history` command: cursor-paginated reads with attachments and filters (upstream PR #28)
