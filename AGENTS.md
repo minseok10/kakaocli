@@ -143,7 +143,7 @@ kakaocli sync --follow
 ```
 Outputs one JSON object per line (NDJSON) for each new message:
 ```json
-{"type":"message","log_id":123,"chat_id":456,"chat_name":"Mom","sender_id":789,"sender":"Mom","text":"Are you coming?","message_type":1,"timestamp":"2026-02-20T10:30:00Z","is_from_me":false}
+{"type":"message","log_id":123,"chat_id":456,"chat_name":"Mom","sender_id":789,"sender":"Mom","text":"Are you coming?","message_type":1,"message_type_name":"text","deleted":false,"timestamp":"2026-02-20T10:30:00Z","is_from_me":false}
 ```
 
 ### With Webhook
@@ -231,7 +231,9 @@ Returns JSON array with per-chat results:
 | `Keychain error` | Run `kakaocli login --clear` then re-store credentials |
 | `No login window found` | KakaoTalk window may be hidden — run `kakaocli login --status` to check |
 | `Login did not succeed` | Verify credentials: `kakaocli login --email ... --password ...` |
-| `Chat not found` | Use exact substring match — run `kakaocli chats` to see available names |
+| `Chat not found` | Run `kakaocli chats` to see available names |
+| `matches N chats` | The name is ambiguous — retry with one of the exact names listed in the error |
+| `Opened '...' instead of '...'` | A different chat opened; nothing was sent. Retry |
 | `No open windows` | KakaoTalk may need manual interaction first time — open it once manually |
 | Login works but send fails | Window may need time to load — retry after 2-3 seconds |
 

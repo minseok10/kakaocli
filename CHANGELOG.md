@@ -1,5 +1,13 @@
 # Changelog
 
+### Unreleased (minseok10 fork)
+- `sync`: skip pending `logId = Int64.max` rows so the cursor cannot freeze (upstream PR #17)
+- userId cached in `~/.kakaocli/userid`, revalidated against the active account
+- `send`: refuse ambiguous chat names; verify the opened window title before typing
+- Message types: correct names for all KakaoTalk codes, raw `type_code`, `deleted` flag
+- `query`: NULL → `null`, BLOB → base64
+- `history` command: cursor-paginated reads with attachments and filters (upstream PR #28)
+
 ### v0.5.0 - Chat Harvest (Phase 4)
 - `harvest` command: bulk-capture chat display names and load message history
 - Vision framework OCR to locate "View Previous Chats" button

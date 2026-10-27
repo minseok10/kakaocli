@@ -87,7 +87,9 @@ after which plain `swift test` works.
 - **Self-chat** (type 5): Only 1 member, label as "Self-chat (Notes)"
 - **`NTChatRoom.chatName`**: Usually empty — only set for custom-named group chats
 - **`kakaocli chats --limit N`**: Default limit is 50. Use `--limit 999999` to get all chats.
-- **Local DB message cache**: Only ~1-4 messages per chat are cached locally. Full history lives on KakaoTalk's servers.
+- **Local DB message cache**: Only chats opened on this Mac are synced locally; coverage varies widely per chat (a long-used install can hold hundreds of thousands of messages). Full history lives on KakaoTalk's servers.
+- **Message type codes**: `NTChatMessage.type` follows KakaoTalk's chat type codes (see `Message.MessageType`). `+0x4000` marks a message deleted for everyone. Some rows store `sentAt` as REAL — `history` casts it to INTEGER for its cursor.
+- **userId cache**: `~/.kakaocli/userid`, trusted only while `SHA-512(userId)` equals the active account hash in the plist.
 
 ### Query Command
 - `kakaocli query "SELECT ..."` — runs raw read-only SQL against the decrypted DB, returns JSON array of arrays.

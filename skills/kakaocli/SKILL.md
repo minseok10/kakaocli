@@ -40,10 +40,18 @@ kakaocli chats --json
 kakaocli messages --chat "Name" --since 1h --json
 ```
 
+### Read a Whole Chat (paginated)
+```bash
+kakaocli history --chat-id 123 --limit 100                # newest page
+kakaocli history --chat-id 123 --before "<cursor>"         # next older page
+```
+Each row has `cursor`, `type`, `type_code`, and `attachment` / `local_file_path` for media. Stop when the result is `[]`.
+
 ### Send Message
 ```bash
 kakaocli send "Name" "Your message here"
 ```
+Use the exact chat name. If the name matches several chats, `send` refuses and lists them.
 
 ### Send to Self-Chat (Testing)
 ```bash
