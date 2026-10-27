@@ -259,9 +259,17 @@ public final class DatabaseReader: @unchecked Sendable {
         return results.first ?? 0
     }
 
+    /// KakaoTalk stores an outgoing message with `logId = Int64.max` until the server
+    /// acks it. A sync cursor seeded from that placeholder makes every later
+    /// `logId > ?` query empty, so readers that track a cursor must skip it.
+    static let pendingLogId = Int64.max
+
     /// Get the maximum logId in the messages table (used by DatabaseWatcher).
     public func maxLogId() throws -> Int64 {
-        let results = try query("SELECT MAX(logId) FROM NTChatMessage", bind: []) { row in
+        let results = try query(
+            "SELECT MAX(logId) FROM NTChatMessage WHERE logId != ?",
+            bind: [.int64(Self.pendingLogId)]
+        ) { row in
             row.optionalInt64(0)
         }
         return results.first.flatMap { $0 } ?? 0
@@ -280,12 +288,13 @@ public final class DatabaseReader: @unchecked Sendable {
             LEFT JOIN NTChatRoom r ON m.chatId = r.chatId
             LEFT JOIN NTUser u ON r.directChatMemberUserId = u.userId AND u.linkId = 0
             LEFT JOIN NTUser u2 ON m.authorId = u2.userId AND u2.linkId = 0
-            WHERE m.logId > ?
+            WHERE m.logId > ? AND m.logId != ?
             ORDER BY m.logId ASC
             LIMIT 100
             """
         let formatter = ISO8601DateFormatter()
-        return try query(sql, bind: [.int64(logId)]) { row in
+        // Pending rows are skipped; they are picked up once KakaoTalk rewrites them with the real logId.
+        return try query(sql, bind: [.int64(logId), .int64(Self.pendingLogId)]) { row in
             SyncMessage(
                 type: "message",
                 logId: row.int64(0),
