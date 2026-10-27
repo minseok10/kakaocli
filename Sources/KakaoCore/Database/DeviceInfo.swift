@@ -49,6 +49,48 @@ public enum DeviceInfo {
         return "\(prefDir)/com.kakao.KakaoTalkMac.plist"
     }
 
+    /// Where a recovered userId is cached, so the SHA-512 search runs at most once.
+    public static var userIdCachePath: URL {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".kakaocli")
+            .appendingPathComponent("userid")
+    }
+
+    /// Get the logged-in user's ID.
+    ///
+    /// Returns the cached value when it still hashes to the active account
+    /// (so switching accounts invalidates it), otherwise detects it from the
+    /// plist and refreshes the cache.
+    public static func userId() throws -> Int {
+        let hash = activeAccountHash()
+        if let hash, let cached = cachedUserId(), sha512Hex(String(cached)) == hash.lowercased() {
+            return cached
+        }
+        let id = try detectUserId()
+        if hash != nil {
+            saveCachedUserId(id)
+        }
+        return id
+    }
+
+    private static func cachedUserId() -> Int? {
+        guard let text = try? String(contentsOf: userIdCachePath, encoding: .utf8) else { return nil }
+        return Int(text.trimmingCharacters(in: .whitespacesAndNewlines))
+    }
+
+    private static func saveCachedUserId(_ id: Int) {
+        let dir = userIdCachePath.deletingLastPathComponent()
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try? String(id).write(to: userIdCachePath, atomically: true, encoding: .utf8)
+    }
+
+    static func sha512Hex(_ string: String) -> String {
+        let data = Array(string.utf8)
+        var hash = [UInt8](repeating: 0, count: Int(CC_SHA512_DIGEST_LENGTH))
+        CC_SHA512(data, CC_LONG(data.count), &hash)
+        return hash.map { String(format: "%02x", $0) }.joined()
+    }
+
     /// Extract user ID from the KakaoTalk preferences plist.
     ///
     /// Tries multiple strategies in order:
@@ -56,7 +98,7 @@ public enum DeviceInfo {
     /// 2. Direct key lookup (userId, user_id, etc.)
     /// 3. Recover userId by reversing SHA-512 hash from plist revision keys
     /// 4. FSChatWindowFrame_ common suffix
-    public static func userId() throws -> Int {
+    static func detectUserId() throws -> Int {
         let plistPaths = [containerPreferencesPath, preferencesPath]
         for plistPath in plistPaths {
             guard FileManager.default.fileExists(atPath: plistPath) else { continue }
