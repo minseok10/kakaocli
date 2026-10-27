@@ -1,3 +1,4 @@
+import AppKit
 import ArgumentParser
 import Foundation
 import KakaoCore
@@ -38,10 +39,18 @@ struct SendCommand: ParsableCommand {
         }
 
         // Take the baseline before touching the UI, so only a message written by this send can match.
-        let reader = try openDatabase(dbPath: nil, key: nil)
+        let reader: DatabaseReader
+        let myUserId: Int64
+        let baseline: Int64
+        do {
+            reader = try openDatabase(dbPath: nil, key: nil)
+            myUserId = try reader.myUserId()
+            baseline = try reader.maxLogId()
+        } catch {
+            fputs(databaseAccessMessage(error), stderr)
+            throw ExitCode.failure
+        }
         defer { reader.close() }
-        let myUserId = try reader.myUserId()
-        let baseline = try reader.maxLogId()
 
         try automator.sendMessage(to: chat, message: message, selfChat: selfChat)
 
@@ -63,6 +72,36 @@ struct SendCommand: ParsableCommand {
             }
             Thread.sleep(forTimeInterval: 0.5)
         }
+    }
+
+    /// Explain a failure to read the DB before sending. The common cause is a missing
+    /// Full Disk Access grant for the app kakaocli was launched from.
+    private func databaseAccessMessage(_ error: Error) -> String {
+        let canReadContainer = (try? FileManager.default.contentsOfDirectory(atPath: DeviceInfo.containerPath)) != nil
+        guard !canReadContainer else {
+            return """
+                Error: Could not open the KakaoTalk database, which send needs to confirm delivery. Nothing was sent.
+                Details: \(error)
+
+                """
+        }
+        return """
+            Error: send needs to read the KakaoTalk database to confirm delivery, but \(launchingAppName()) \
+            does not have Full Disk Access. Nothing was sent.
+
+            Grant it in System Settings > Privacy & Security > Full Disk Access, then quit and reopen that app.
+
+            """
+    }
+
+    /// The app this process was launched from, as macOS attributes file-access permissions to it.
+    private func launchingAppName() -> String {
+        guard let bundleId = ProcessInfo.processInfo.environment["__CFBundleIdentifier"],
+              let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleId)
+        else {
+            return "the app you ran kakaocli from (your terminal)"
+        }
+        return "\"\(url.deletingPathExtension().lastPathComponent)\""
     }
 
     private func chatLabel(_ reader: DatabaseReader, _ chatId: Int64) -> String {

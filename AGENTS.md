@@ -235,6 +235,7 @@ Returns JSON array with per-chat results:
 | `matches N chats` | The name is ambiguous — retry with one of the exact names listed in the error |
 | `Opened '...' instead of '...'` | A different chat opened; nothing was sent. Retry |
 | `already has a draft` | Clear the draft in that chat's input box in KakaoTalk; nothing was sent |
+| `send needs to read the KakaoTalk database` | Grant Full Disk Access to the app named in the error (the one kakaocli runs from); nothing was sent |
 | `send` exits with status 2 | Return was pressed but the message was not confirmed in the DB. Check KakaoTalk before retrying to avoid a duplicate |
 | `No open windows` | KakaoTalk may need manual interaction first time — open it once manually |
 | Login works but send fails | Window may need time to load — retry after 2-3 seconds |
