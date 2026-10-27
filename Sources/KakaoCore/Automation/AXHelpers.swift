@@ -203,6 +203,13 @@ public enum AXHelpers {
         return nil
     }
 
+    /// All rows of a chat list, paired with their name labels.
+    public static func chatRows(_ table: AXUIElement) -> [(row: AXUIElement, name: String?)] {
+        children(table)
+            .filter { role($0) == "AXRow" }
+            .map { ($0, chatRowName($0)) }
+    }
+
     /// Find the AXRow in a chat list whose name label matches the given text.
     public static func findChatRow(_ table: AXUIElement, chatName: String, exact: Bool = false) -> AXUIElement? {
         for row in children(table) {

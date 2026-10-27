@@ -76,13 +76,20 @@ public final class KakaoAutomator {
             }
             row = selfRow
         } else {
-            guard let chatRow = AXHelpers.findChatRow(table, chatName: chatName) else {
-                dlog("step5 FAIL: findChatRow(\(chatName)) nil")
+            let rows = AXHelpers.chatRows(table)
+            switch ChatNameMatcher.match(chatName, in: rows.map(\.name)) {
+            case .found(let index):
+                row = rows[index].row
+            case .notFound:
+                dlog("step5 FAIL: no row matches \(chatName)")
                 throw AutomationError.chatNotFound(chatName)
+            case .ambiguous(let names):
+                dlog("step5 FAIL: \(names.count) rows match \(chatName)")
+                throw AutomationError.ambiguousChat(chatName, candidates: names)
             }
-            row = chatRow
         }
-        dlog("step5 row found")
+        let expectedTitle = AXHelpers.chatRowName(row)
+        dlog("step5 row found name=\(expectedTitle ?? "?")")
 
         // 6. Open the chat via AX row selection + Enter (works even when off-screen).
         //    Falls back to scroll-into-view + double-click if selection fails.
@@ -118,6 +125,17 @@ public final class KakaoAutomator {
             throw AutomationError.inputFieldNotFound
         }
         dlog("step7 chatWindow role=\(AXHelpers.role(chatWindow) ?? "?") title=\(AXHelpers.title(chatWindow) ?? "?")")
+
+        // 7b. Verify the window is the chat we matched. The list re-sorts as messages
+        //     arrive and the double-click fallback is positional, so another chat can open.
+        if let expectedTitle {
+            let openedTitle = AXHelpers.title(chatWindow)
+            guard openedTitle == expectedTitle else {
+                dlog("step7b FAIL: expected '\(expectedTitle)', opened '\(openedTitle ?? "?")'")
+                _ = AXHelpers.closeWindow(chatWindow)
+                throw AutomationError.wrongChatOpened(expected: expectedTitle, opened: openedTitle)
+            }
+        }
 
         // 8. Find the message input field
         // Dump children for debug
@@ -188,6 +206,8 @@ public final class KakaoAutomator {
 public enum AutomationError: Error, CustomStringConvertible {
     case noWindows
     case chatNotFound(String)
+    case ambiguousChat(String, candidates: [String])
+    case wrongChatOpened(expected: String, opened: String?)
     case inputFieldNotFound
     case sendFailed(String)
 
@@ -197,6 +217,11 @@ public enum AutomationError: Error, CustomStringConvertible {
             return "KakaoTalk has no open windows"
         case .chatNotFound(let name):
             return "Chat '\(name)' not found in the chat list"
+        case .ambiguousChat(let name, let candidates):
+            let list = candidates.map { "  - \($0)" }.joined(separator: "\n")
+            return "Chat name '\(name)' matches \(candidates.count) chats. Use the exact name:\n\(list)"
+        case .wrongChatOpened(let expected, let opened):
+            return "Opened '\(opened ?? "(untitled)")' instead of '\(expected)'. Nothing was sent."
         case .inputFieldNotFound:
             return """
             Could not find the message input field.
